@@ -15,6 +15,10 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
+  Key,
+  Settings,
+  HelpCircle,
+  CheckCircle2,
 } from "lucide-react";
 
 interface Props {
@@ -29,7 +33,6 @@ const REGION_OPTIONS = [
   { value: "google.fr", label: "Google Fransa (google.fr)", hl: "fr", gl: "fr" },
 ];
 
-// Güvenli URL ayrıştırma yardımcıları (İstemci tarafı çökmelerini önlemek için)
 const getHostname = (urlStr: string): string => {
   try {
     return new URL(urlStr).hostname;
@@ -46,7 +49,6 @@ const getPathname = (urlStr: string): string => {
   }
 };
 
-// Benzersiz kimlik oluşturucu (uuid paketi bağımlılığını kaldırmak ve güvenli kılmak için)
 const generateId = (): string => {
   return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
 };
@@ -58,13 +60,30 @@ export default function GoogleRank({ report }: Props) {
   const [depth, setDepth] = useState<number>(100);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // API ayarları state'leri
+  const [apiProvider, setApiProvider] = useState("scraper");
+  const [apiKey, setApiKey] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   
-  // Hydration mismatches (sunucu/istemci zaman uyumsuzluğu) hatalarını önlemek için
   const [mounted, setMounted] = useState(false);
 
+  // localStorage'dan ayarları yükle
   useEffect(() => {
     setMounted(true);
+    const savedProvider = localStorage.getItem("seo_rank_provider");
+    const savedKey = localStorage.getItem("seo_rank_key");
+    if (savedProvider) setApiProvider(savedProvider);
+    if (savedKey) setApiKey(savedKey);
   }, []);
+
+  // Ayarları kaydet
+  const saveApiSettings = (provider: string, key: string) => {
+    setApiProvider(provider);
+    setApiKey(key);
+    localStorage.setItem("seo_rank_provider", provider);
+    localStorage.setItem("seo_rank_key", key);
+  };
 
   // Görselleştirilen (seçili) sorgu
   const [selectedQuery, setSelectedQuery] = useState<RankQuery | null>(
@@ -101,6 +120,8 @@ export default function GoogleRank({ report }: Props) {
           hl: selectedOption.hl,
           gl: selectedOption.gl,
           depth,
+          apiKey: apiProvider !== "scraper" ? apiKey : undefined,
+          apiProvider,
         }),
       });
 
@@ -150,12 +171,117 @@ export default function GoogleRank({ report }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-1">Google Sıralama Sorgulama</h2>
-        <p className="text-gray-400 text-sm">
-          Hedef site: <span className="text-blue-400 font-medium">{cleanDomain}</span> — Google sıralamasını anlık sorgulayın.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-1">Google Sıralama Sorgulama</h2>
+          <p className="text-gray-400 text-sm">
+            Hedef site: <span className="text-blue-400 font-medium">{cleanDomain}</span> — Google sıralamasını anlık sorgulayın.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            showSettings
+              ? "bg-blue-600/20 border-blue-500 text-blue-300"
+              : "bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          {showSettings ? "Ayarları Gizle" : "API Ayarları"}
+        </button>
       </div>
+
+      {/* API Ayarları Modülü */}
+      {showSettings && (
+        <div className="card border-blue-600/30 bg-blue-950/5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-250">
+          <div className="flex items-center gap-2.5 border-b border-gray-800 pb-3">
+            <Key className="w-5 h-5 text-blue-400" />
+            <h3 className="font-semibold text-white">Sorgu Alt Yapısı ve API Anahtarları</h3>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-xs text-gray-400 font-medium">Sorgulama Sağlayıcısı</label>
+              <select
+                className="input bg-gray-800 border-gray-700 text-gray-100"
+                value={apiProvider}
+                onChange={(e) => saveApiSettings(e.target.value, apiKey)}
+              >
+                <option value="scraper">Google Scraper (Ücretsiz, Robot Korumasına Takılabilir)</option>
+                <option value="serper">Serper.dev API (Önerilen - 2500 Sorgu Bedava)</option>
+                <option value="serpapi">SerpApi (Alternatif - 100 Sorgu/Ay Bedava)</option>
+              </select>
+            </div>
+
+            {apiProvider !== "scraper" && (
+              <div className="space-y-2">
+                <label className="text-xs text-gray-400 font-medium">API Anahtarı (API Key)</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="API Anahtarınızı buraya yapıştırın"
+                  value={apiKey}
+                  onChange={(e) => saveApiSettings(apiProvider, e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Yardımcı Rehberler */}
+          <div className="bg-gray-950/50 p-4 rounded-xl border border-gray-850 text-xs text-gray-400 space-y-2">
+            {apiProvider === "scraper" && (
+              <p className="flex items-start gap-1.5 leading-relaxed">
+                <HelpCircle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Scraper Yöntemi:</strong> Doğrudan Google sunucularını tarar. Kod yerelde çalışırken IP adresinizin Google robot kontrolüne (enablejs/CAPTCHA) takılma ihtimali yüksektir. Hata alırsanız Serper.dev API yöntemine geçmeniz önerilir.
+                </span>
+              </p>
+            )}
+
+            {apiProvider === "serper" && (
+              <div className="space-y-1">
+                <p className="flex items-start gap-1.5 leading-relaxed text-blue-300">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Serper.dev Kurulumu:</strong> Google'dan anlık veri çekmek için en kararlı yöntemdir.
+                  </span>
+                </p>
+                <ol className="list-decimal pl-5 space-y-1 mt-1">
+                  <li>
+                    <a href="https://serper.dev" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 font-semibold">
+                      serper.dev <ExternalLink className="w-3 h-3" />
+                    </a>{" "}
+                    adresine gidin ve tamamen ücretsiz bir hesap açın.
+                  </li>
+                  <li>Kayıt olduğunuz an size otomatik olarak **2.500 ücretsiz kredi** tanımlanır.</li>
+                  <li>Dashboard'dan aldığınız **API Key** değerini yukarıdaki kutuya girip kaydetmeniz yeterlidir.</li>
+                </ol>
+              </div>
+            )}
+
+            {apiProvider === "serpapi" && (
+              <div className="space-y-1">
+                <p className="flex items-start gap-1.5 leading-relaxed">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>SerpApi Kurulumu:</strong> Popüler arama motoru API'sidir.
+                  </span>
+                </p>
+                <ol className="list-decimal pl-5 space-y-1 mt-1">
+                  <li>
+                    <a href="https://serpapi.com" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 font-semibold">
+                      serpapi.com <ExternalLink className="w-3 h-3" />
+                    </a>{" "}
+                    adresine gidin ve hesap açın (Her ay 100 sorgu ücretsizdir).
+                  </li>
+                  <li>Hesabınızdan kopyaladığınız **API Key** değerini yukarıdaki kutuya girin.</li>
+                </ol>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Arama Formu */}
       <div className="card">
@@ -228,6 +354,15 @@ export default function GoogleRank({ report }: Props) {
             <div>
               <p className="font-semibold">Hata Oluştu</p>
               <p className="text-gray-300 mt-1">{error}</p>
+              {error.includes("robot") && (
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline font-medium flex items-center gap-1"
+                >
+                  Buradan Serper.dev API ayarını yaparak sorunu çözebilirsiniz
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
         )}
