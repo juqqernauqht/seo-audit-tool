@@ -35,8 +35,34 @@ export default function HomePage() {
 
       setJobId(data.jobId);
 
-      // Job'ı polling ile takip et
-      pollJob(data.jobId);
+      // Eğer API doğrudan tamamlanmış raporu döndüyse (Next.js senkron çalışıyor)
+      // polling yapmadan doğrudan yönlendir.
+      if (data.status === "completed" && data.report) {
+        setCurrentReport(data.report);
+        
+        // Refresh veya kayıp durumları için localStorage'a kaydet
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`seo_report_${data.jobId}`, JSON.stringify(data.report));
+        }
+
+        // Mock bir tamamlanmış job oluştur
+        setCurrentJob({
+          id: data.jobId,
+          status: "completed",
+          progress: 100,
+          pagesFound: data.report.summary.totalPages,
+          pagesProcessed: data.report.summary.crawledPages,
+          currentUrl: "Bitti",
+          createdAt: new Date().toISOString(),
+          report: data.report
+        });
+
+        setAppState("done");
+        router.push(`/audit/${data.jobId}`);
+      } else {
+        // Fallback: Polling ile takip et
+        pollJob(data.jobId);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bilinmeyen hata");
       setAppState("form");
@@ -47,13 +73,24 @@ export default function HomePage() {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/crawl/${id}`);
-        const job = await res.json();
+        
+        // Vercel serverless konteyner uyumsuzluğu nedeniyle 404 veya geçici hata
+        // durumlarında taramayı iptal etme, sessizce bekle
+        if (res.status === 404) {
+          return;
+        }
 
+        const job = await res.json();
         setCurrentJob(job);
 
         if (job.status === "completed" && job.report) {
           clearInterval(interval);
           setCurrentReport(job.report);
+          
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`seo_report_${id}`, JSON.stringify(job.report));
+          }
+
           setAppState("done");
           router.push(`/audit/${id}`);
         } else if (job.status === "error") {
@@ -62,9 +99,7 @@ export default function HomePage() {
           setAppState("form");
         }
       } catch {
-        clearInterval(interval);
-        setError("Sunucuya bağlanılamadı");
-        setAppState("form");
+        // Ağ hatası veya geçici kesintilerde sessizce devam et
       }
     }, 1500);
   };

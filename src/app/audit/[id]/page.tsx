@@ -24,12 +24,29 @@ export default function AuditPage() {
 
   useEffect(() => {
     if (!currentReport && params.id) {
-      // Sayfa yenilenmişse job'ı çek
+      // Önce localStorage'da kayıtlı bir rapor olup olmadığını kontrol et
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem(`seo_report_${params.id}`);
+        if (saved) {
+          try {
+            const parsedReport = JSON.parse(saved);
+            setCurrentReport(parsedReport);
+            return;
+          } catch (e) {
+            console.error("Local report load error:", e);
+          }
+        }
+      }
+
+      // Sayfa yenilenmişse ve local'de yoksa job'ı çek
       fetch(`/api/crawl/${params.id}`)
         .then((r) => r.json())
         .then((job) => {
           setCurrentJob(job);
-          if (job.report) setCurrentReport(job.report);
+          if (job.report) {
+            setCurrentReport(job.report);
+            localStorage.setItem(`seo_report_${params.id}`, JSON.stringify(job.report));
+          }
           else router.push("/");
         })
         .catch(() => router.push("/"));

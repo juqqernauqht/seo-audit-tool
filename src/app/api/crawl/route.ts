@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       pagesProcessed: report.summary.crawledPages,
     });
 
-    return NextResponse.json({ jobId, status: "completed", reportId: report.id });
+    return NextResponse.json({ jobId, status: "completed", reportId: report.id, report });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Bilinmeyen hata";
     updateJob(jobId, { status: "error", error: message });
