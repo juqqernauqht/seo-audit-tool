@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { AuditReport, RankQuery } from "@/lib/types";
 import { useAuditStore } from "@/store/auditStore";
 import {
@@ -16,7 +16,6 @@ import {
   Clock,
   Sparkles,
 } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
 
 interface Props {
   report: AuditReport;
@@ -30,6 +29,28 @@ const REGION_OPTIONS = [
   { value: "google.fr", label: "Google Fransa (google.fr)", hl: "fr", gl: "fr" },
 ];
 
+// Güvenli URL ayrıştırma yardımcıları (İstemci tarafı çökmelerini önlemek için)
+const getHostname = (urlStr: string): string => {
+  try {
+    return new URL(urlStr).hostname;
+  } catch {
+    return urlStr || "";
+  }
+};
+
+const getPathname = (urlStr: string): string => {
+  try {
+    return new URL(urlStr).pathname;
+  } catch {
+    return "";
+  }
+};
+
+// Benzersiz kimlik oluşturucu (uuid paketi bağımlılığını kaldırmak ve güvenli kılmak için)
+const generateId = (): string => {
+  return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+};
+
 export default function GoogleRank({ report }: Props) {
   const { rankQueries, addRankQuery, deleteRankQuery } = useAuditStore();
   const [keyword, setKeyword] = useState("");
@@ -37,6 +58,13 @@ export default function GoogleRank({ report }: Props) {
   const [depth, setDepth] = useState<number>(100);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Hydration mismatches (sunucu/istemci zaman uyumsuzluğu) hatalarını önlemek için
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Görselleştirilen (seçili) sorgu
   const [selectedQuery, setSelectedQuery] = useState<RankQuery | null>(
@@ -83,7 +111,7 @@ export default function GoogleRank({ report }: Props) {
       }
 
       const newQuery: RankQuery = {
-        id: uuidv4(),
+        id: generateId(),
         keyword: queryKeyword.trim(),
         domain: cleanDomain,
         region: queryRegion,
@@ -107,7 +135,6 @@ export default function GoogleRank({ report }: Props) {
     e.stopPropagation();
     deleteRankQuery(id);
     if (selectedQuery?.id === id) {
-      // Seçili sorguyu temizle veya bir sonrakini seç
       const remaining = rankQueries.filter((q) => q.id !== id);
       setSelectedQuery(remaining.length > 0 ? remaining[0] : null);
     }
@@ -220,11 +247,15 @@ export default function GoogleRank({ report }: Props) {
                   <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Anahtar Kelime</div>
                   <div className="text-xl font-bold text-white mt-0.5">"{selectedQuery.keyword}"</div>
                   <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-400">
-                    <Globe className="w-3..5 h-3.5" />
+                    <Globe className="w-3.5 h-3.5" />
                     <span>{selectedQuery.region}</span>
                     <span>•</span>
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{new Date(selectedQuery.queriedAt).toLocaleTimeString("tr-TR")}</span>
+                    <span>
+                      {mounted
+                        ? new Date(selectedQuery.queriedAt).toLocaleTimeString("tr-TR")
+                        : ""}
+                    </span>
                   </div>
                 </div>
 
@@ -297,10 +328,10 @@ export default function GoogleRank({ report }: Props) {
                           {/* Link/Domain başlığı */}
                           <div className="text-xs text-gray-500 truncate max-w-[85%] flex items-center gap-1.5 mb-0.5">
                             <span className="text-green-500 font-medium">
-                              {new URL(res.url).hostname}
+                              {getHostname(res.url)}
                             </span>
                             <span className="text-gray-600">
-                              {new URL(res.url).pathname}
+                              {getPathname(res.url)}
                             </span>
                           </div>
 
@@ -384,7 +415,11 @@ export default function GoogleRank({ report }: Props) {
                     <div className="text-[10px] text-gray-500 mt-0.5 truncate flex items-center gap-1.5">
                       <span>{q.region}</span>
                       <span>•</span>
-                      <span>{new Date(q.queriedAt).toLocaleTimeString("tr-TR")}</span>
+                      <span>
+                        {mounted
+                          ? new Date(q.queriedAt).toLocaleTimeString("tr-TR")
+                          : ""}
+                      </span>
                     </div>
                   </div>
 
