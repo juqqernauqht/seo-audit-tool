@@ -230,3 +230,22 @@ export interface CrawlJob {
   error?: string;
   createdAt: string;
 }
+
+export interface RankQueryResult {
+  title: string;
+  url: string;
+  snippet: string;
+  rank: number;
+}
+
+export interface RankQuery {
+  id: string;
+  keyword: string;
+  domain: string;
+  region: string;
+  rank: number | null;
+  foundUrl: string | null;
+  queriedAt: string;
+  results: RankQueryResult[];
+}
+

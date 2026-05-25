@@ -5,7 +5,7 @@ import type { AuditReport } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard, ShieldCheck, Search, Link2, MapPin,
-  Code2, Globe, BarChart3, List, Zap, Download, ArrowLeft,
+  Code2, Globe, BarChart3, List, Zap, Download, ArrowLeft, TrendingUp
 } from "lucide-react";
 
 interface Props {
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { id: "overview", label: "Genel Bakış", icon: LayoutDashboard },
   { id: "technical", label: "Teknik SEO", icon: ShieldCheck },
   { id: "serp", label: "SERP Önizleme", icon: Search },
+  { id: "google-rank", label: "Google Sıralama", icon: TrendingUp },
   { id: "internal-links", label: "İç Link Yapısı", icon: Link2 },
   { id: "local-seo", label: "Yerel SEO", icon: MapPin },
   { id: "schema", label: "Schema", icon: Code2 },

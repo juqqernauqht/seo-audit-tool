@@ -9,6 +9,7 @@ import TechnicalSEO from "@/components/dashboard/TechnicalSEO";
 import URLTable from "@/components/dashboard/URLTable";
 import IssueList from "@/components/dashboard/IssueList";
 import SERPPreview from "@/components/dashboard/SERPPreview";
+import GoogleRank from "@/components/dashboard/GoogleRank";
 import LocalSEO from "@/components/dashboard/LocalSEO";
 import InternalLinks from "@/components/dashboard/InternalLinks";
 import SchemaSection from "@/components/dashboard/SchemaSection";
@@ -47,6 +48,7 @@ export default function AuditPage() {
     overview: <OverviewSection report={currentReport} />,
     technical: <TechnicalSEO report={currentReport} />,
     serp: <SERPPreview report={currentReport} />,
+    "google-rank": <GoogleRank report={currentReport} />,
     "internal-links": <InternalLinks report={currentReport} />,
     "local-seo": <LocalSEO report={currentReport} />,
     schema: <SchemaSection report={currentReport} />,
@@ -55,6 +57,7 @@ export default function AuditPage() {
     "quick-wins": <QuickWins report={currentReport} />,
     export: <ExportSection jobId={params.id} />,
   };
+
 
   return (
     <AppShell report={currentReport}>
